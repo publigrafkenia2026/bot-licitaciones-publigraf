@@ -4,7 +4,7 @@ name: Prueba diaria del bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "20 13 * * *"
+    - cron: "0 13 * * *"
 
 permissions:
   contents: read
@@ -12,28 +12,26 @@ permissions:
 jobs:
   prueba:
     runs-on: ubuntu-latest
+    env:
+      GMAIL_USER: ${{ secrets.GMAIL_USER }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+
     steps:
-      - name: Descargar el repositorio
+      - name: Descargar repositorio
         uses: actions/checkout@v4
 
       - name: Preparar Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
 
-      - name: Comprobar archivos
-        run: |
-          python --version
-          test -f main.py
-          test -f config.json
-
-      - name: Ejecutar prueba
+      - name: Ejecutar bot
         run: python main.py
 
       - name: Guardar informe
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: informe-prueba
+          name: informe-publigraf
           path: reportes/*.md
           if-no-files-found: warn
