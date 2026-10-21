@@ -1,47 +1,57 @@
-"""
-Bot inicial de licitaciones para Publigraf Kenia.
-Esta primera versión NO afirma que haya encontrado todas las convocatorias:
-deja lista la estructura para conectar fuentes oficiales verificadas.
-"""
+
 import json
-import os
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
-KEYWORDS_FILE = Path("config.json")
-OUTPUT_DIR = Path("informes")
-OUTPUT_DIR.mkdir(exist_ok=True)
+BASE = Path(__file__).resolve().parent
+CONFIG = BASE / "config.json"
+REPORTES = BASE / "reportes"
 
-def load_config():
-    with KEYWORDS_FILE.open("r", encoding="utf-8") as f:
-        return json.load(f)
 
 def main():
-    config = load_config()
-    now = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
-    report = [
-        "# Informe inicial de monitoreo de licitaciones",
+    if not CONFIG.exists():
+        raise FileNotFoundError("No se encuentra config.json")
+
+    with CONFIG.open("r", encoding="utf-8") as archivo:
+        config = json.load(archivo)
+
+    ahora = datetime.now(
+        ZoneInfo(config.get("timezone", "America/Lima"))
+    )
+
+    REPORTES.mkdir(parents=True, exist_ok=True)
+
+    lineas = [
+        "# Bot de licitaciones Publigraf Kenia",
         "",
-        f"Generado: {now}",
+        f"Fecha de prueba: {ahora:%d/%m/%Y %H:%M:%S}",
+        "Zona horaria: America/Lima",
+        "",
+        "## Estado",
+        "- Ejecución del programa: correcta",
+        "- Búsqueda real en SEACE/OECE: pendiente de implementar",
+        "- Descarga de documentos PDF: pendiente de implementar",
+        "- Envío de correo: pendiente de implementar",
         "",
         "## Categorías configuradas",
     ]
-    for category in config["categories"]:
-        report.append(f"- **{category['name']}**: {', '.join(category['keywords'])}")
-    report += [
+
+    for categoria in config.get("categories", []):
+        nombre = categoria.get("name", "Sin nombre")
+        palabras = categoria.get("keywords", [])
+        lineas.append(f"- **{nombre}**: {', '.join(palabras) or 'sin palabras clave'}")
+
+    lineas += [
         "",
-        "## Estado",
-        "",
-        "Esta versión inicial solo valida la configuración y genera este informe.",
-        "Aún no consulta fuentes de contratación, no descarga PDF y no envía correos.",
-        "Esas funciones se agregarán después de verificar las fuentes oficiales y configurar",
-        "las credenciales de forma segura mediante GitHub Secrets.",
-        "",
-        "No uses este informe como lista de oportunidades reales.",
+        "Este informe confirma únicamente la prueba técnica.",
     ]
-    output = OUTPUT_DIR / "informe_inicial.md"
-    output.write_text("\n".join(report), encoding="utf-8")
-    print(f"Informe creado: {output}")
+
+    destino = REPORTES / f"informe-{ahora:%Y%m%d-%H%M%S}.md"
+    destino.write_text("\n".join(lineas) + "\n", encoding="utf-8")
+
+    print(f"Informe creado correctamente: {destino}")
+
 
 if __name__ == "__main__":
     main()
