@@ -1,0 +1,29 @@
+
+name: Prueba diaria del bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 13 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  prueba:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Ejecutar prueba
+        run: python main.py
+      - name: Guardar informe
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-prueba
+          path: reportes/*.md
+          if-no-files-found: error
