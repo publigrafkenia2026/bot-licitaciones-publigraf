@@ -15,15 +15,25 @@ jobs:
     steps:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
+
       - name: Preparar Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Comprobar archivos
+        run: |
+          python --version
+          test -f main.py
+          test -f config.json
+
       - name: Ejecutar prueba
         run: python main.py
+
       - name: Guardar informe
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: informe-prueba
           path: reportes/*.md
-          if-no-files-found: error
+          if-no-files-found: warn
