@@ -1,20 +1,48 @@
+
 {
   "categories": [
     {
       "name": "Impresos y papelería",
-      "keywords": ["impresión", "papelería", "cuadernos", "folders", "tarjetas", "revistas", "catálogos"]
+      "keywords": [
+        "impresión",
+        "papelería",
+        "cuadernos",
+        "folders",
+        "tarjetas",
+        "revistas",
+        "catálogos"
+      ]
     },
     {
       "name": "Publicidad y gran formato",
-      "keywords": ["banner", "gigantografía", "vinil", "señalética", "roll screen", "panel publicitario"]
+      "keywords": [
+        "banner",
+        "gigantografía",
+        "vinil",
+        "señalética",
+        "roll screen",
+        "panel publicitario"
+      ]
     },
     {
       "name": "Merchandising y promocionales",
-      "keywords": ["merchandising", "agendas", "calendarios", "bolsas", "artículos promocionales"]
+      "keywords": [
+        "merchandising",
+        "agendas",
+        "calendarios",
+        "bolsas",
+        "artículos promocionales"
+      ]
     },
     {
       "name": "Servicios de impresión y diseño",
-      "keywords": ["servicio de impresión", "diseño gráfico", "impresión digital", "impresión offset", "acabados gráficos"]
+      "keywords": [
+        "servicio de impresión",
+        "diseño gráfico",
+        "impresión digital",
+        "impresión offset",
+        "acabados gráficos"
+      ]
     },
     {
       "name": "Otros productos del Estado",
@@ -22,5 +50,6 @@
     }
   ],
   "timezone": "America/Lima",
-  "send_email": false
+  "send_email": true,
+  "email_to": "ventaspubligrafkenia@gmail.com"
 }
