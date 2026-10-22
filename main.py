@@ -12,10 +12,7 @@ BASE = Path(__file__).resolve().parent
 CONFIG = BASE / "config.json"
 REPORTES = BASE / "reportes"
 
-SEACE_URL = (
-    "https://prod2.seace.gob.pe/"
-    "seacebus-uiwd-pub/buscadorPublico/"
-    "buscadorPublico.xhtml"
+SEACE_URL = "https://prod1.seace.gob.pe/SeaceWeb-PRO/public/buscarProcedimientosSeleccion.iface?init=1"
 )
 
 
