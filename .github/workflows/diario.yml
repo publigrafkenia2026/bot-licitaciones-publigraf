@@ -1,5 +1,5 @@
 
-name: Prueba diaria del bot
+name: Bot diario de contratos menores
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  prueba:
+  bot:
     runs-on: ubuntu-latest
     env:
       GMAIL_USER: ${{ secrets.GMAIL_USER }}
@@ -25,7 +25,15 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Ejecutar bot
+      - name: Recuperar oportunidades notificadas
+        uses: actions/cache@v4
+        with:
+          path: data/notificados.json
+          key: notificados-${{ github.run_id }}
+          restore-keys: |
+            notificados-
+
+      - name: Ejecutar búsqueda y enviar alertas
         run: python main.py
 
       - name: Guardar informe
