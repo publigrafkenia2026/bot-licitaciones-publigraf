@@ -3,6 +3,7 @@ import json
 import os
 import smtplib
 import urllib.request
+import urllib.error
 from datetime import datetime
 from email.message import EmailMessage
 from pathlib import Path
@@ -12,44 +13,68 @@ BASE = Path(__file__).resolve().parent
 CONFIG = BASE / "config.json"
 REPORTES = BASE / "reportes"
 
-SEACE_URL = "https://prod1.seace.gob.pe/SeaceWeb-PRO/public/buscarProcedimientosSeleccion.iface?init=1"
-)
+PORTALES_SEACE = [
+    (
+        "Buscador público SEACE",
+        "https://prod1.seace.gob.pe/"
+        "SeaceWeb-PRO/public/"
+        "buscarProcedimientosSeleccion.iface?init=1",
+    ),
+    (
+        "Buscador público SEACE alternativo",
+        "https://prod2.seace.gob.pe/"
+        "seacebus-uiwd-pub/buscadorPublico/"
+        "buscadorPublico.xhtml",
+    ),
+]
 
 
-def comprobar_seace():
-    """Comprueba el acceso al portal; no simula resultados."""
+def comprobar_portal(url):
     solicitud = urllib.request.Request(
-        SEACE_URL,
-        headers={"User-Agent": "PubligrafKeniaBot/1.0"},
+        url,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (compatible; "
+                "PubligrafKeniaBot/1.0)"
+            ),
+            "Accept": (
+                "text/html,application/xhtml+xml,"
+                "application/xml;q=0.9,*/*;q=0.8"
+            ),
+        },
     )
 
     try:
         with urllib.request.urlopen(
-            solicitud, timeout=30
+            solicitud, timeout=25
         ) as respuesta:
-            estado = respuesta.status
-            contenido = respuesta.read(500_000).decode(
-                "utf-8", errors="replace"
-            )
+            codigo = respuesta.status
+            respuesta.read(1024)
+            return codigo, "Respuesta HTTP recibida"
 
-        if estado == 200:
-            return (
-                "ACCESIBLE",
-                f"El portal oficial respondió HTTP {estado}. "
-                "Esto no significa que se hayan consultado "
-                "convocatorias ni obtenido resultados.",
-            )
-
-        return (
-            "NO VERIFICADO",
-            f"El portal respondió HTTP {estado}.",
-        )
+    except urllib.error.HTTPError as error:
+        return error.code, f"El servidor respondió HTTP {error.code}"
 
     except Exception as error:
-        return (
-            "ERROR",
-            f"No se pudo consultar el portal: {error}",
-        )
+        return None, f"{type(error).__name__}: {error}"
+
+
+def revisar_portales():
+    resultados = []
+
+    for nombre, url in PORTALES_SEACE:
+        codigo, detalle = comprobar_portal(url)
+        resultados.append({
+            "nombre": nombre,
+            "url": url,
+            "codigo": codigo,
+            "detalle": detalle,
+        })
+
+        if codigo == 200:
+            break
+
+    return resultados
 
 
 def enviar_correo(destino, asunto, contenido):
@@ -58,8 +83,8 @@ def enviar_correo(destino, asunto, contenido):
 
     if not usuario or not clave:
         raise RuntimeError(
-            "Faltan los secretos GMAIL_USER o "
-            "GMAIL_APP_PASSWORD en GitHub Actions."
+            "Falta configurar GMAIL_USER o "
+            "GMAIL_APP_PASSWORD en GitHub Secrets."
         )
 
     mensaje = EmailMessage()
@@ -78,7 +103,9 @@ def enviar_correo(destino, asunto, contenido):
 
 def main():
     if not CONFIG.exists():
-        raise FileNotFoundError("No se encuentra config.json")
+        raise FileNotFoundError(
+            "No se encuentra config.json"
+        )
 
     with CONFIG.open("r", encoding="utf-8") as archivo:
         config = json.load(archivo)
@@ -89,23 +116,47 @@ def main():
     ahora = datetime.now(zona)
     REPORTES.mkdir(parents=True, exist_ok=True)
 
-    estado, detalle = comprobar_seace()
+    resultados = revisar_portales()
+    accesible = any(
+        resultado["codigo"] == 200
+        for resultado in resultados
+    )
 
     lineas = [
         "# Bot de licitaciones - Publigraf Kenia",
         "",
         f"Fecha: {ahora:%d/%m/%Y %H:%M:%S}",
         "",
-        "## Resultado de la ejecución",
-        "- Programa ejecutado: sí",
-        f"- Acceso al portal SEACE: {estado}",
-        f"- Detalle: {detalle}",
-        "- Búsqueda automatizada de convocatorias: "
+        "## Estado de la consulta",
+        (
+            "- Acceso HTTP a un portal público: "
+            + ("RESPUESTA 200" if accesible else "NO CONFIRMADO")
+        ),
+        "- Búsqueda real de convocatorias: "
         "PENDIENTE DE IMPLEMENTAR",
-        "- Resultados reales verificados: ninguno",
+        "- Convocatorias verificadas: ninguna",
         "",
-        "## Categorías de interés",
+        "## Comprobación de portales",
     ]
+
+    for resultado in resultados:
+        codigo = resultado["codigo"]
+        estado = (
+            str(codigo) if codigo is not None
+            else "SIN RESPUESTA"
+        )
+        lineas.extend([
+            "",
+            f"### {resultado['nombre']}",
+            f"- Código HTTP: {estado}",
+            f"- Detalle: {resultado['detalle']}",
+            f"- Dirección: {resultado['url']}",
+        ])
+
+    lineas.extend([
+        "",
+        "## Categorías configuradas",
+    ])
 
     for categoria in config.get("categories", []):
         nombre = categoria.get("name", "Sin nombre")
@@ -117,26 +168,30 @@ def main():
 
     lineas.extend([
         "",
-        "## Portal oficial",
-        SEACE_URL,
+        "## Importante",
+        "Una respuesta HTTP 200 solo confirma que el servidor "
+        "respondió. No confirma que se hayan buscado ni "
+        "encontrado convocatorias.",
         "",
-        "AVISO: comprobar el acceso al portal no equivale "
-        "a buscar ni validar oportunidades de contratación.",
+        "El buscador automático y la validación de oportunidades "
+        "siguen pendientes.",
     ])
 
     contenido = "\n".join(lineas) + "\n"
-    archivo_salida = REPORTES / (
+    ruta = REPORTES / (
         f"informe-{ahora:%Y%m%d-%H%M%S}.md"
     )
-    archivo_salida.write_text(
-        contenido, encoding="utf-8"
-    )
+    ruta.write_text(contenido, encoding="utf-8")
 
-    print(f"Informe creado: {archivo_salida}")
-    print(f"Acceso SEACE: {estado}")
+    print(f"Informe creado: {ruta}")
+    print(
+        "Portal accesible:",
+        "sí" if accesible else "no confirmado",
+    )
 
     if config.get("send_email", False):
         destino = config.get("email_to")
+
         if not destino:
             raise RuntimeError(
                 "Falta email_to en config.json"
@@ -144,7 +199,7 @@ def main():
 
         enviar_correo(
             destino,
-            f"Estado del bot Publigraf Kenia - "
+            f"Informe del bot Publigraf Kenia - "
             f"{ahora:%d/%m/%Y}",
             contenido,
         )
